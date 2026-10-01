@@ -1,0 +1,234 @@
+# openapi.yaml
+openapi: 3.0.0
+info:
+  title: API del Enterprise Service Bus (ESB) de Catálogo de Productos
+  version: 1.0.0
+  description: |
+    Esta API permite interactuar con los diversos servicios de backend (Base de Datos,
+    Mensajería, Catálogo XLS) a través del Enterprise Service Bus.
+    El ESB actúa como un punto de entrada unificado para orquestar las operaciones.
+servers:
+  - url: http://localhost:5000
+    description: Servidor Local del ESB
+
+paths:
+  /executeService:
+    post:
+      summary: Ejecuta una operación de servicio a través del ESB
+      description: |
+        Este endpoint permite invocar cualquier servicio configurado en el ESB
+        proporcionando la metadata de la llamada en el cuerpo de la solicitud.
+
+        **La estructura del `data` array debe contener una clave que sea el nombre del `ClassHandler`
+        (ej. `Product`, `MessagingService`, `ExcelCatalogoHandler`) que se desea invocar.**
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceCallMetadata" # <-- Referencia al esquema principal
+            examples:
+              getProductById:
+                summary: Obtener Producto por ID (PostgreSQL)
+                value:
+                  SYSServiceID: getProductById
+                  data:
+                    - Product:
+                        SYSServiceMethod: get_by_id
+                        id: P001
+              createProduct:
+                summary: Crear Producto (PostgreSQL)
+                value:
+                  SYSServiceID: createProduct
+                  data:
+                    - Product:
+                        SYSServiceMethod: create
+                        id: P007
+                        nombre: "Mouse Gaming"
+                        descripcion: "Mouse ergonómico RGB"
+                        categoria: "Perifericos"
+                        precio: 50.00
+              updateProduct:
+                summary: Actualizar Producto por ID (PostgreSQL)
+                value:
+                  SYSServiceID: updateProductById
+                  data:
+                    - Product:
+                        SYSServiceMethod: update
+                        id: P005
+                        precio: 109.99
+                        descripcion: "Auriculares inalámbricos con sonido HD"
+              deleteProduct:
+                summary: Eliminar Producto por ID (PostgreSQL)
+                value:
+                  SYSServiceID: deleteProductById
+                  data:
+                    - Product:
+                        SYSServiceMethod: delete
+                        id: P005
+              sendPurchaseNotification:
+                summary: Enviar Notificación de Compra (RabbitMQ)
+                value:
+                  SYSServiceID: sendPurchaseNotification
+                  data:
+                    - MessagingService:
+                        SYSServiceMethod: send_purchase_notification
+                        compra_data:
+                          order_id: "ORD004"
+                          product_id: "P007"
+                          quantity: 1
+                          customer_email: "test@example.com"
+                          timestamp: "2025-06-21T12:00:00Z"
+              registerLogEvent:
+                summary: Registrar Evento de Log (RabbitMQ)
+                value:
+                  SYSServiceID: registerLogEvent
+                  data:
+                    - MessagingService:
+                        SYSServiceMethod: register_log_event
+                        log_data:
+                          level: WARNING
+                          message: "Intento de acceso fallido desde IP 192.168.1.10."
+                          service: "security"
+                          timestamp: "2025-06-21T10:35:00Z"
+              getXLSProductById:
+                summary: Obtener Producto por ID (Catálogo XLS)
+                value:
+                  SYSServiceID: getById
+                  data:
+                    - ExcelCatalogoHandler:
+                        SYSServiceMethod: get_by_id
+                        product_id: "EL001" # Usamos un string si el ID en XLS puede ser string
+              listAllXLSProducts:
+                summary: Listar Todos los Productos (Catálogo XLS)
+                value:
+                  SYSServiceID: listAll
+                  data:
+                    - ExcelCatalogoHandler:
+                        SYSServiceMethod: list_all_products
+              searchXLSProductsByName:
+                summary: Buscar Productos por Nombre (Catálogo XLS)
+                value:
+                  SYSServiceID: searchByName
+                  data:
+                    - ExcelCatalogoHandler:
+                        SYSServiceMethod: search_products_by_name
+                        nombre_parcial: "Cable"
+
+      responses:
+        "200":
+          description: Operación ejecutada exitosamente.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    description: Estado de la operación (ej. 'success', 'error').
+                    example: success
+                  message:
+                    type: string
+                    description: Mensaje descriptivo (solo si 'status' es 'error').
+                    example: Producto con ID P999 no encontrado.
+                  payload:
+                    type: object
+                    description: Contenido de la respuesta del servicio (solo si 'status' es 'success').
+                    example:
+                      id: P001
+                      nombre: Laptop Gamer
+                      descripcion: Potente laptop para juegos
+                      categoria: Laptops
+                      precio: 1500.00
+        "400":
+          description: Solicitud inválida (ej. parámetros faltantes o incorrectos).
+        "500":
+          description: Error interno del servidor o del servicio de backend.
+
+components:
+  schemas:
+    # Definición del esquema principal ServiceCallMetadata
+    ServiceCallMetadata:
+      type: object
+      title: ServiceCallMetadata
+      description: La estructura de metadata requerida por el ESB para invocar un servicio.
+      properties:
+        SYSServiceID:
+          type: string
+          description: El identificador lógico de la operación.
+          example: getProductById
+        data:
+          type: array
+          description: Lista de objetos, cada uno conteniendo la invocación a un ClassHandler específico.
+          items:
+            type: object
+            # Aquí la estructura es dinámica, la clave es el nombre del ClassHandler
+            # y sus valores son objetos con SYSServiceMethod y los parámetros.
+            # Los ejemplos concretos en el requestBody son la mejor manera de ilustrar esto.
+
+    # Definición de los esquemas de los datos que van *dentro* de las operaciones (payloads)
+    ProductPayload: # Usado para create/update/get responses
+      type: object
+      properties:
+        id:
+          type: string
+          description: Identificador único del producto.
+        nombre:
+          type: string
+          description: Nombre del producto.
+        descripcion:
+          type: string
+          description: Descripción detallada del producto.
+        categoria:
+          type: string
+          description: Categoría del producto.
+        precio:
+          type: number
+          format: float
+          description: Precio del producto.
+      example:
+        id: P001
+        nombre: Laptop Gamer
+        descripcion: Potente laptop para juegos
+        categoria: Laptops
+        precio: 1500.00
+
+    PurchaseNotificationData: # Usado para enviar notificaciones de compra
+      type: object
+      properties:
+        order_id:
+          type: string
+        product_id:
+          type: string
+        quantity:
+          type: integer
+        customer_email:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+      example:
+        order_id: ORD002
+        product_id: P003
+        quantity: 1
+        customer_email: otro@example.com
+        timestamp: "2025-06-21T10:30:00Z"
+
+    LogEventData: # Usado para registrar eventos de log
+      type: object
+      properties:
+        level:
+          type: string
+        message:
+          type: string
+        service:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+      example:
+        level: INFO
+        message: "Usuario P001 ha iniciado sesión."
+        service: "auth_service"
+        timestamp: "2025-06-21T10:01:00Z"

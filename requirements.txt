@@ -1,0 +1,23 @@
+AMQPStorm==2.11.1
+et_xmlfile==2.0.0
+execnet==2.1.1
+iniconfig==2.1.0
+microesb @ file:///home/balarezofabricio/Escritorio/proyectoSOA/python-micro-esb
+numpy==2.3.1
+openpyxl==3.1.5
+packaging==25.0
+pamqp==2.3.0
+pandas==2.3.0
+pep8==1.7.1
+pluggy==1.6.0
+psycopg2==2.9.10
+psycopg2-binary==2.9.10
+Pygments==2.19.1
+pytest==8.4.1
+pytest-cache==1.0
+pytest-pep8==1.0.6
+python-dateutil==2.9.0.post0
+pytz==2025.2
+six==1.17.0
+tzdata==2025.2
+xlrd==2.0.2

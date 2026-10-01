@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:13 # Usa la imagen oficial de PostgreSQL
+    container_name: esb_postgres_db
+    environment:
+      POSTGRES_DB: esb_catalogo_db # Nombre de la base de datos a crear
+      POSTGRES_USER: esb_user      # Usuario de la base de datos (cambiar en producción)
+      POSTGRES_PASSWORD: esb_password # Contraseña del usuario (cambiar en producción)
+    ports:
+      - "5432:5432" # Mapea el puerto 5432 de tu máquina al puerto 5432 del contenedor
+    volumes:
+      - db_data:/var/lib/postgresql/data # Persiste los datos de la base de datos
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql # Ejecuta scripts SQL al iniciar el contenedor
+    restart: always # Asegura que el contenedor se reinicie si falla
+  
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: esb_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: user # Usuario de la cola AMPQ (cambiar en producción)
+      RABBITMQ_DEFAULT_PASS: password # Contraseña del usuario (cambiar en producción)
+    ports:
+      - "5672:5672" # Puerto estándar para la comunicación AMQP
+      - "15672:15672" # Puerto para la interfaz de administración (http://localhost:15672)
+    restart: always
+
+volumes:
+  db_data:
